@@ -57,7 +57,7 @@ def clean(df: pd.DataFrame) -> pd.DataFrame:
             df[col] = pd.to_datetime(df[col], dayfirst=True, errors="coerce")
 
     # --- Strip whitespace from string columns ---
-    str_cols = df.select_dtypes(include=["object"]).columns
+    str_cols = df.select_dtypes(include=["object", "str"]).columns
     for col in str_cols:
         df[col] = df[col].str.strip()
 

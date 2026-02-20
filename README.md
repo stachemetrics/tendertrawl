@@ -109,9 +109,9 @@ Raw `.xlsx` exports live in `data/raw/` (gitignored). Download from [tenders.gov
 ## Build order
 
 - [x] Data pipeline — `combine_exports.py`, validate CN data
-- [ ] Insights engine — pandas queries (agency spend, top suppliers, expiring contracts)
-- [ ] Gradio shell — themed chat UI, hardcoded example responses
+- [x] Insights engine — pandas queries (agency spend, top suppliers, expiring contracts)
+- [x] Gradio shell — themed chat UI, hardcoded demo responses, streaming, URL input, clear button
 - [ ] LLM integration — Gemini for business description understanding + response generation
-- [ ] Discovery — match capabilities to open tenders (sample data first)
-- [ ] Polish — streaming, status animations, error handling
+- [ ] Discovery — match capabilities to open tenders (RSS feed + sample data)
+- [ ] Polish — error handling, deploy-ready config
 - [ ] Deploy — Modal config, public URL

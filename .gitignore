@@ -1,3 +1,6 @@
 data/raw/
+working/
 .venv/
 .env
+__pycache__/
+.claude/
