@@ -195,7 +195,7 @@ def web():
 1. ✅ **Data pipeline** — `combine_exports.py`, load and validate CN data
 2. ✅ **Insights engine** — pandas queries (agency spend, top suppliers, expiring contracts)
 3. ✅ **Gradio shell** — dark theme, streaming chat, URL input, clear button, hardcoded demo responses; tender links use `tenders.gov.au/Atm/Show/{GUID}`; no estimated value (not in RSS feed)
-4. **LLM integration** — Gemini for understanding business descriptions + generating summaries
+4. ⚠️ **LLM integration** — Gemini for understanding business descriptions + generating summaries (requires Gemini API key with Search tool access; otherwise calls fail with ClientError)
 5. **Discovery** — match capabilities to open tenders via AusTender RSS feed + sample data
 6. **Polish** — error handling, deploy-ready config
 7. **Deploy** — Modal config, public URL, blog post
