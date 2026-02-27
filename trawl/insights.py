@@ -43,11 +43,25 @@ def match_categories(keywords: list[str], df: pd.DataFrame | None = None) -> lis
         df = load()
 
     cats = df["Category"].dropna().unique()
-    kw_lower = [k.lower() for k in keywords]
+
+    # Generic words that appear in almost every category name — matching on them
+    # produces useless noise (e.g. "services" matches "Accounting services" etc.)
+    _STOP = {"services", "service", "solutions", "solution", "national",
+             "australian", "government", "support", "management", "operations"}
+
+    # Expand multi-word phrases into individual tokens for better matching
+    # (LLM keywords like "cloud security" won't match "IaaS - Cloud" as a phrase)
+    tokens: set[str] = set()
+    for kw in keywords:
+        kw_low = kw.lower()
+        tokens.add(kw_low)
+        for word in kw_low.split():
+            if len(word) > 3 and word not in _STOP:
+                tokens.add(word)
 
     matched = [
         cat for cat in cats
-        if any(kw in cat.lower() for kw in kw_lower)
+        if any(tok in cat.lower() for tok in tokens)
     ]
     return sorted(matched)
 

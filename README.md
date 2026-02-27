@@ -18,20 +18,18 @@ You:  We're a small cybersecurity consultancy in Canberra,
 
 🐟:   Casting the net... 🎣
 
-      I found 3 open tenders that match your capability:
-
       🎯 ICT Security Assessment Panel — Dept of Finance
-         Closes 15 Mar 2026 | Est. value: $2-5M
+         Closes 15 Mar 2026
 
       ⚡ Digital Transformation Services — Services Australia
-         Closes 28 Feb 2026 | Est. value: $500K-1M
+         Closes 28 Feb 2026
 
       💰 Dept of Defence spent $340M on IT security services
          across 89 contracts. 12 worth $28M expire in 6 months.
          That's where the next wave comes from.
 ```
 
-"Here's what's open" is table stakes. "Here's where the money has been, who's winning it, and when the doors reopen" is the demo's value.
+"Here's what's open" is table stakes. "Here's where the money has been, who's winning it, and when the doors reopen" is the value.
 
 ---
 
@@ -40,9 +38,8 @@ You:  We're a small cybersecurity consultancy in Canberra,
 | Component | Tool |
 |-----------|------|
 | UI | Gradio `gr.Blocks` — dark theme, streaming chat |
-| LLM | Google Gemini API (`gemini-2.0-flash`) |
-| Data | pandas + openpyxl |
-| Scraping | httpx + BeautifulSoup |
+| LLM | Google Gemini API (`gemini-2.5-flash` with Search grounding) |
+| Data | pandas — AusTender contract notice exports |
 | Deploy | Modal |
 
 ---
@@ -51,19 +48,17 @@ You:  We're a small cybersecurity consultancy in Canberra,
 
 ```
 tendertrawl/
-├── app.py                 # Gradio UI + chat logic
-├── deploy.py              # Modal deployment harness
+├── app/
+│   ├── app.py             # Gradio UI + chat logic
+│   └── deploy.py          # Modal deployment
 ├── trawl/
 │   ├── insights.py        # Pandas queries: agency spend, suppliers, expiring contracts
-│   ├── discovery.py       # Match business description to open tenders
-│   ├── llm.py             # Gemini API wrapper
-│   └── scraper.py         # Fetch company website, parse capability keywords
+│   └── llm.py             # Gemini API wrapper
 ├── data/
-│   ├── raw/               # 52 xlsx exports (gitignored)
-│   ├── cn_combined.csv    # Combined + cleaned (gitignored)
-│   └── sample.csv         # Small sample for dev/demo (committed)
+│   ├── raw/               # Weekly xlsx exports from AusTender (gitignored)
+│   └── cn_combined.csv    # Combined + cleaned dataset (gitignored)
 ├── scripts/
-│   └── combine_exports.py # Concatenate 52 xlsx → one CSV
+│   └── combine_exports.py # Concatenate xlsx exports → one CSV
 ├── .env                   # GEMINI_API_KEY=... (gitignored)
 └── requirements.txt
 ```
@@ -75,7 +70,7 @@ tendertrawl/
 ```bash
 # Create and activate virtualenv
 python -m venv .venv
-source .venv/bin/activate
+source .venv/bin/activate   # Windows: .venv\Scripts\activate
 
 # Install dependencies
 pip install -r requirements.txt
@@ -85,11 +80,33 @@ cp .env.example .env
 # edit .env → GEMINI_API_KEY=your-key-here
 
 # (Optional) rebuild combined CSV from raw exports
+# Download xlsx files from tenders.gov.au/Reports/CnWeeklyExportList → data/raw/
 python scripts/combine_exports.py
 
 # Run locally
-python app.py
+python app/app.py
+# → http://localhost:7860
 ```
+
+---
+
+## Deploy to Modal
+
+```bash
+pip install modal
+modal setup
+
+# Create secret (once)
+modal secret create tendertrawl-secrets GEMINI_API_KEY=your-key-here
+
+# Serve with hot-reload (dev)
+modal serve app/deploy.py
+
+# Deploy to production
+modal deploy app/deploy.py
+```
+
+Logs persist to `/root/logs/tendertrawl_logs.jsonl` on a Modal Volume.
 
 ---
 
@@ -98,20 +115,32 @@ python app.py
 `data/cn_combined.csv` — ~81K contract notices from [AusTender weekly exports](https://www.tenders.gov.au/Reports/CnWeeklyExportList).
 
 - Date range: Feb 2025 – Feb 2026
-- Total value: ~$969B
-- 127 unique agencies, 24K+ suppliers, 551 categories
-- ~25K contracts expiring within 6 months (~$65B) — the opportunity pipeline
+- Total value: ~$969B across 127 agencies
+- 24K+ unique suppliers, 551 categories
+- ~25K contracts expiring within 6 months (~$65B) — the forward opportunity pipeline
 
-Raw `.xlsx` exports live in `data/raw/` (gitignored). Download from [tenders.gov.au](https://www.tenders.gov.au/Reports/CnWeeklyExportList), move to `./data/raw/` and run `combine_exports.py` to rebuild.
+---
+
+## Known limitations
+
+- Open tender search relies on Gemini's Google Search grounding — results vary by niche
+- Category matching uses substring keywords; obscure specialisations may not map cleanly
+- `cn_combined.csv` is a point-in-time snapshot; not updated automatically
 
 ---
 
 ## Build order
 
 - [x] Data pipeline — `combine_exports.py`, validate CN data
-- [x] Insights engine — pandas queries (agency spend, top suppliers, expiring contracts)
-- [x] Gradio shell — themed chat UI, hardcoded demo responses, streaming, URL input, clear button
-- [ ] LLM integration — Gemini for business description understanding + response generation
-- [ ] Discovery — match capabilities to open tenders (RSS feed + sample data)
-- [ ] Polish — error handling, deploy-ready config
-- [ ] Deploy — Modal config, public URL
+- [x] Insights engine — agency spend, top suppliers, expiring contracts
+- [x] Gradio shell — dark theme, streaming chat, match score emojis
+- [x] LLM integration — Gemini profile extraction + Search-grounded tender discovery
+- [ ] Discovery — RSS feed integration for live open tenders
+- [ ] Polish — rate limiting, error handling
+- [ ] Deploy — Modal, public URL, blog post
+
+---
+
+## License
+
+MIT — see [LICENSE](LICENSE)

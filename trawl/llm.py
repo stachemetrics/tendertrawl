@@ -14,7 +14,7 @@ from google.genai import types
 
 from trawl import insights
 
-MODEL_NAME = "gemini-2.0-flash"
+MODEL_NAME = "gemini-2.5-flash"
 
 
 @lru_cache(maxsize=1)
@@ -74,7 +74,6 @@ Input:
     client = _client()
     config = types.GenerateContentConfig(
         temperature=0.2,
-        response_mime_type="application/json",
         tools=[types.Tool(google_search=types.GoogleSearch())],
     )
     response = client.models.generate_content(
@@ -192,18 +191,20 @@ def insights_markdown(keywords: list[str]) -> str:
     return "\n".join(lines)
 
 
-def generate_response(user_input: str) -> str:
+def generate_response(user_input: str) -> tuple[str, bool]:
+    """
+    Returns (response_markdown, has_tenders).
+    has_tenders is True when at least one open tender was found.
+    """
     profile = extract_profile(user_input)
     tender_block = generate_tender_list(profile, user_input)
     insight_block = insights_markdown(profile.get("keywords", []))
 
-    closing = (
-        "\n\nWant me to dig into a specific agency, "
-        "look at expiring contracts, or refine the match with more detail?"
-    )
+    # Tender match emojis are present only when the LLM actually found listings
+    has_tenders = any(e in tender_block for e in ("🎯", "⚡", "🤷"))
 
     if tender_block:
-        return f"{tender_block}\n\n---\n\n{insight_block}{closing}"
+        return f"{tender_block}\n\n---\n\n{insight_block}", has_tenders
 
-    return f"{insight_block}{closing}"
+    return insight_block, False
 

@@ -4,3 +4,5 @@ working/
 .env
 __pycache__/
 .claude/
+memory/
+logs/

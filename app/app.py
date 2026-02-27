@@ -1,15 +1,26 @@
 """
-app.py — TenderTrawl chat UI.
+app/app.py — TenderTrawl chat UI.
 
-Run locally:
-    python app.py
+Run locally (from project root):
+    python app/app.py
 
-Step 3: Gradio shell with hardcoded demo responses.
-Step 4 will replace DEMO_RESPONSES with live LLM + insights calls.
+Deploy to Modal:
+    modal serve app/deploy.py
+    modal deploy app/deploy.py
 """
 
+import json
+import os
+import sys
 import time
+import uuid
 import warnings
+from datetime import datetime, timezone
+
+# Allow 'trawl' package to be found when running from app/ directory
+_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if _ROOT not in sys.path:
+    sys.path.insert(0, _ROOT)
 
 import gradio as gr
 from dotenv import load_dotenv
@@ -21,11 +32,31 @@ warnings.filterwarnings("ignore", category=DeprecationWarning, message=".*Gradio
 
 load_dotenv()
 
+# Current open tenders from tenders.gov.au (updated Feb 2026)
 EXAMPLE_PROMPTS = [
-    "Canberra cyber consultancy — IRAP and cloud security",
-    "Sydney civil engineering — defence facilities",
-    "Radiation safety services — Lucas Heights NSW",
+    "Health survey fieldwork — anthropometric screening and data collection",
+    "Environmental consulting — catchment modelling and water quality",
+    "International development program management — Southeast Asia",
 ]
+
+# ---------------------------------------------------------------------------
+# Logging
+# ---------------------------------------------------------------------------
+
+_SESSION_ID = str(uuid.uuid4())[:8]
+_LOG_DIR: str | None = None
+
+
+def _log_event(event: dict) -> None:
+    if not _LOG_DIR:
+        return
+    try:
+        os.makedirs(_LOG_DIR, exist_ok=True)
+        log_path = os.path.join(_LOG_DIR, "tendertrawl_logs.jsonl")
+        with open(log_path, "a") as f:
+            f.write(json.dumps({**event, "session": _SESSION_ID}) + "\n")
+    except Exception:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -34,23 +65,31 @@ EXAMPLE_PROMPTS = [
 
 def respond(message: str, history: list):
     if not message.strip():
-        yield history, ""
+        yield history, "", gr.update()
         return
+
     history = list(history) + [{"role": "user", "content": message.strip()}]
-    yield history, ""
+    yield history, "", gr.update(visible=False)
 
     # Status: casting
     history = history + [{"role": "assistant", "content": "🎣 Casting the net..."}]
-    yield history, ""
+    yield history, "", gr.update(visible=False)
     time.sleep(0.7)
 
     # Status: checking catch
     history[-1]["content"] = "🎣 Casting the net...\n\n💰 Checking the catch..."
-    yield history, ""
+    yield history, "", gr.update(visible=False)
     time.sleep(0.5)
 
     try:
-        full_response = llm.generate_response(message.strip())
+        full_response, has_tenders = llm.generate_response(message.strip())
+        _log_event({
+            "ts": datetime.now(timezone.utc).isoformat(),
+            "event": "query",
+            "query": message.strip(),
+            "has_tenders": has_tenders,
+            "response_chars": len(full_response),
+        })
     except Exception as exc:
         detail = str(exc).strip().replace("\n", " ")
         if len(detail) > 220:
@@ -60,6 +99,7 @@ def respond(message: str, history: list):
             f"Error: {exc.__class__.__name__}: {detail}. "
             "Check your GEMINI_API_KEY in .env and try again."
         )
+        has_tenders = False
 
     # Stream word by word
     words = full_response.split(" ")
@@ -68,11 +108,19 @@ def respond(message: str, history: list):
         accumulated += word + " "
         history[-1]["content"] = accumulated.rstrip()
         if i % 4 == 0:
-            yield history, ""
+            yield history, "", gr.update(visible=False)
             time.sleep(0.018)
 
     history[-1]["content"] = accumulated.rstrip()
-    yield history, ""
+    yield history, "", gr.update(visible=has_tenders)
+
+
+def _draft_clicked():
+    _log_event({
+        "ts": datetime.now(timezone.utc).isoformat(),
+        "event": "draft_cta_clicked",
+    })
+    gr.Info("Coming soon! Bid writing is on the roadmap — drop us a note at mmetrics.ai 🚀")
 
 
 # ---------------------------------------------------------------------------
@@ -94,7 +142,10 @@ HEADER = """\
 """
 
 
-def create_demo() -> gr.Blocks:
+def create_demo(log_dir: str | None = None) -> gr.Blocks:
+    global _LOG_DIR
+    _LOG_DIR = log_dir
+
     with gr.Blocks(
         title="TenderTrawl",
         theme=gr.themes.Monochrome(),
@@ -132,6 +183,13 @@ def create_demo() -> gr.Blocks:
             show_share_button=False,
         )
 
+        draft_btn = gr.Button(
+            "📝 Draft a tender response →",
+            visible=False,
+            size="sm",
+            variant="secondary",
+        )
+
         gr.ClearButton(
             components=[msg, chatbot],
             value="Clear",
@@ -144,12 +202,13 @@ def create_demo() -> gr.Blocks:
             "Prototype by [mmetrics.ai](https://mmetrics.ai)_",
         )
 
-        msg.submit(respond, [msg, chatbot], [chatbot, msg])
-        btn.click(respond, [msg, chatbot], [chatbot, msg])
+        msg.submit(respond, [msg, chatbot], [chatbot, msg, draft_btn])
+        btn.click(respond, [msg, chatbot], [chatbot, msg, draft_btn])
+        draft_btn.click(_draft_clicked, [], [])
 
     return demo
 
 
 if __name__ == "__main__":
-    demo = create_demo()
+    demo = create_demo(log_dir="logs")
     demo.launch()
