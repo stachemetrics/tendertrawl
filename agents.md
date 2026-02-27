@@ -194,11 +194,12 @@ def web():
 
 1. ✅ **Data pipeline** — `combine_exports.py`, load and validate CN data
 2. ✅ **Insights engine** — pandas queries (agency spend, top suppliers, expiring contracts)
-3. ✅ **Gradio shell** — dark theme, streaming chat, URL input, clear button, hardcoded demo responses; tender links use `tenders.gov.au/Atm/Show/{GUID}`; no estimated value (not in RSS feed)
-4. ⚠️ **LLM integration** — Gemini for understanding business descriptions + generating summaries (requires Gemini API key with Search tool access; otherwise calls fail with ClientError)
-5. **Discovery** — match capabilities to open tenders via AusTender RSS feed + sample data
-6. **Polish** — error handling, deploy-ready config
-7. **Deploy** — Modal config, public URL, blog post
+3. ✅ **Gradio shell** — dark theme, streaming chat, URL input, clear button; tender links use `tenders.gov.au/Atm/Show/{GUID}`; "Draft response" CTA stub with coming-soon popup and click logging
+4. ✅ **LLM integration** — `gemini-2.5-flash` with Google Search grounding; `extract_profile` + `generate_tender_list` + `insights_markdown`; returns `(text, has_tenders)` tuple to drive CTA visibility
+5. ✅ **Deploy** — Modal 1.3.4, `gemini-secret`, `tendertrawl-logs` volume, live on Modal
+6. ⚠️ **Performance** — response latency ~20–30s due to two sequential Gemini Search calls; investigate parallelising and GCP region settings
+7. **Polish** — rate limiting, better error states, data refresh pipeline
+8. **Blog post** — mmetrics.ai write-up
 
 ## Competitive Context
 

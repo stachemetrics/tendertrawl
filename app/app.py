@@ -17,10 +17,14 @@ import uuid
 import warnings
 from datetime import datetime, timezone
 
-# Allow 'trawl' package to be found when running from app/ directory
-_ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-if _ROOT not in sys.path:
-    sys.path.insert(0, _ROOT)
+# Locate 'trawl' package. In Modal it sits next to app.py at /root/trawl;
+# locally it's one level up from app/ at the project root.
+_HERE = os.path.dirname(os.path.abspath(__file__))
+for _candidate in (_HERE, os.path.dirname(_HERE)):
+    if os.path.isdir(os.path.join(_candidate, "trawl")):
+        if _candidate not in sys.path:
+            sys.path.insert(0, _candidate)
+        break
 
 import gradio as gr
 from dotenv import load_dotenv

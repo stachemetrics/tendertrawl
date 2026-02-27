@@ -96,10 +96,11 @@ python app/app.py
 pip install modal
 modal setup
 
-# Create secret (once)
-modal secret create tendertrawl-secrets GEMINI_API_KEY=your-key-here
+# Needs a Modal secret named 'gemini-secret' with GEMINI_API_KEY set.
+# Create it once if it doesn't exist:
+modal secret create gemini-secret GEMINI_API_KEY=your-key-here
 
-# Serve with hot-reload (dev)
+# Serve with hot-reload (dev) — run from project root
 modal serve app/deploy.py
 
 # Deploy to production
@@ -121,11 +122,15 @@ Logs persist to `/root/logs/tendertrawl_logs.jsonl` on a Modal Volume.
 
 ---
 
-## Known limitations
+## Status
 
-- Open tender search relies on Gemini's Google Search grounding — results vary by niche
-- Category matching uses substring keywords; obscure specialisations may not map cleanly
-- `cn_combined.csv` is a point-in-time snapshot; not updated automatically
+Working demo deployed on Modal. End-to-end flow is live: business description → Gemini profile extraction → Google Search-grounded tender discovery → historical spend insights from AusTender data.
+
+**Known issues / next:**
+- Response latency is high (~20–30s) — two sequential Gemini Search calls; candidate fix is parallelising `extract_profile` + `generate_tender_list`
+- Category matching on niche inputs can produce noisy results (broad keyword expansion)
+- `cn_combined.csv` is a Feb 2026 point-in-time snapshot; no auto-refresh
+- Bid writing CTA is a stub ("coming soon")
 
 ---
 
@@ -134,10 +139,14 @@ Logs persist to `/root/logs/tendertrawl_logs.jsonl` on a Modal Volume.
 - [x] Data pipeline — `combine_exports.py`, validate CN data
 - [x] Insights engine — agency spend, top suppliers, expiring contracts
 - [x] Gradio shell — dark theme, streaming chat, match score emojis
-- [x] LLM integration — Gemini profile extraction + Search-grounded tender discovery
-- [ ] Discovery — RSS feed integration for live open tenders
-- [ ] Polish — rate limiting, error handling
-- [ ] Deploy — Modal, public URL, blog post
+- [x] LLM integration — Gemini 2.5 Flash, Search-grounded profile + tender discovery
+- [x] Deploy — Modal, live URL
+- [X] Blog post
+
+And if there's interest in taking things further...
+- [ ] Performance — parallelise LLM calls, investigate GCP region latency
+- [ ] Polish — rate limiting, better error states, refresh data
+
 
 ---
 

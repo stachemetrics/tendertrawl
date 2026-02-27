@@ -1,15 +1,16 @@
 """
 app/deploy.py — Modal deployment for TenderTrawl.
 
-Serve locally (hot-reload):
-    modal serve app/deploy.py
+Run from the project root (tendertrawl/):
 
-Deploy to production:
-    modal deploy app/deploy.py
+    Serve with hot-reload (dev):
+        modal serve app/deploy.py
 
-Requires a Modal secret named "tendertrawl-secrets" with GEMINI_API_KEY set.
-Create it once with:
-    modal secret create tendertrawl-secrets GEMINI_API_KEY=your-key-here
+    Deploy to production:
+        modal deploy app/deploy.py
+
+Requires the 'gemini-secret' Modal secret to exist with GEMINI_API_KEY set.
+Check with: modal secret list
 """
 
 import modal
@@ -31,9 +32,9 @@ image = (
         "beautifulsoup4",
         "python-dotenv",
     )
-    .copy_local_file("app/app.py", "/root/app.py")
-    .copy_local_dir("trawl", "/root/trawl")
-    .copy_local_file("data/cn_combined.csv", "/root/data/cn_combined.csv")
+    .add_local_file("app/app.py", "/root/app.py")
+    .add_local_dir("trawl", "/root/trawl", ignore=["__pycache__", "*.pyc"])
+    .add_local_file("data/cn_combined.csv", "/root/data/cn_combined.csv")
 )
 
 
@@ -41,7 +42,7 @@ image = (
     image=image,
     max_containers=1,
     volumes={"/root/logs": volume},
-    secrets=[modal.Secret.from_name("tendertrawl-secrets")],
+    secrets=[modal.Secret.from_name("gemini-secret")],
 )
 @modal.concurrent(max_inputs=100)
 @modal.asgi_app()
